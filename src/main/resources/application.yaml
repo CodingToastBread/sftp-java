@@ -1,6 +1,6 @@
 spring:
   application:
-    name: sftp_java
+    name: sftp-java
   main:
     banner-mode: off
 

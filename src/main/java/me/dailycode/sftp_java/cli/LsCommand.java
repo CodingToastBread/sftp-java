@@ -6,6 +6,7 @@ import org.apache.sshd.sftp.client.SftpClient;
 import org.springframework.stereotype.Component;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.util.concurrent.Callable;
@@ -16,6 +17,12 @@ public class LsCommand implements Callable<Integer> {
 
     @Mixin
     private SftpCommand.ConnectionOptions connection;
+
+    @Option(names = {"--sort"}, defaultValue = "asc", description = "Sort by modified time: asc (oldest first) or desc (newest first)")
+    private String sort;
+
+    @Option(names = {"--regex"}, description = "Regex pattern to filter filenames")
+    private String regex;
 
     @Parameters(index = "0", description = "Remote directory path")
     private String remotePath;
@@ -33,7 +40,7 @@ public class LsCommand implements Callable<Integer> {
         SftpClient client = null;
         try {
             client = connectionService.connect(connection.host, connection.port, connection.user, connection.password);
-            operationService.ls(client, remotePath);
+            operationService.ls(client, remotePath, "desc".equalsIgnoreCase(sort), regex);
             return 0;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());

@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.time.Instant;
@@ -24,19 +25,35 @@ public class SftpOperationService {
     private static final DateTimeFormatter DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
-    public void ls(SftpClient client, String remotePath) throws IOException {
+    public void ls(SftpClient client, String remotePath, boolean descending, String regex) throws IOException {
+        Pattern pattern = regex != null ? Pattern.compile(regex) : null;
+        List<SftpClient.DirEntry> allEntries = new ArrayList<>();
         try (SftpClient.CloseableHandle handle = client.openDir(remotePath)) {
-            for (SftpClient.DirEntry entry : client.readDir(handle)) {
-                String name = entry.getFilename();
-                if (".".equals(name) || "..".equals(name)) continue;
-
-                SftpClient.Attributes attrs = entry.getAttributes();
-                long size = attrs.getSize();
-                String modified = formatTime(attrs.getModifyTime());
-                String type = attrs.isDirectory() ? "d" : "-";
-
-                System.out.printf("%s %10d %s %s%n", type, size, modified, name);
+            List<SftpClient.DirEntry> entries;
+            while ((entries = client.readDir(handle)) != null) {
+                for (SftpClient.DirEntry entry : entries) {
+                    String name = entry.getFilename();
+                    if (".".equals(name) || "..".equals(name)) continue;
+                    if (pattern != null && !pattern.matcher(name).matches()) continue;
+                    allEntries.add(entry);
+                }
             }
+        }
+
+        Comparator<SftpClient.DirEntry> comparator = Comparator.comparing(
+                e -> e.getAttributes().getModifyTime().toMillis());
+        if (descending) {
+            comparator = comparator.reversed();
+        }
+        allEntries.sort(comparator);
+
+        for (SftpClient.DirEntry entry : allEntries) {
+            SftpClient.Attributes attrs = entry.getAttributes();
+            long size = attrs.getSize();
+            String modified = formatTime(attrs.getModifyTime());
+            String type = attrs.isDirectory() ? "d" : "f";
+
+            System.out.printf("%s %10d %s %s%n", type, size, modified, entry.getFilename());
         }
     }
 
@@ -77,12 +94,15 @@ public class SftpOperationService {
 
         List<String> matched = new ArrayList<>();
         try (SftpClient.CloseableHandle handle = client.openDir(remoteDir)) {
-            for (SftpClient.DirEntry entry : client.readDir(handle)) {
-                String name = entry.getFilename();
-                if (".".equals(name) || "..".equals(name)) continue;
-                if (entry.getAttributes().isDirectory()) continue;
-                if (pattern.matcher(name).matches()) {
-                    matched.add(name);
+            List<SftpClient.DirEntry> entries;
+            while ((entries = client.readDir(handle)) != null) {
+                for (SftpClient.DirEntry entry : entries) {
+                    String name = entry.getFilename();
+                    if (".".equals(name) || "..".equals(name)) continue;
+                    if (entry.getAttributes().isDirectory()) continue;
+                    if (pattern.matcher(name).matches()) {
+                        matched.add(name);
+                    }
                 }
             }
         }

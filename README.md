@@ -34,11 +34,40 @@ java -jar sftp.jar <command> --help
 java -jar sftp.jar ls -H 10.0.0.1 -u admin -p secret /remote/path
 ```
 
+정렬 옵션 (`--sort`):
+
+```bash
+# 오래된 순 (기본값)
+java -jar sftp.jar ls --sort asc -H 10.0.0.1 -u admin -p secret /remote/path
+
+# 최신 순
+java -jar sftp.jar ls --sort desc -H 10.0.0.1 -u admin -p secret /remote/path
+```
+
+정규식 필터 (`--regex`):
+
+```bash
+# .txt 파일만 조회
+java -jar sftp.jar ls --regex ".*\.txt" -H 10.0.0.1 -u admin -p secret /remote/path
+
+# .log 파일만 최신 순으로 조회
+java -jar sftp.jar ls --regex ".*\.log" --sort desc -H 10.0.0.1 -u admin -p secret /remote/path
+```
+
 리다이렉트로 파일 저장 가능:
 
 ```bash
 java -jar sftp.jar ls -H 10.0.0.1 -u admin -p secret /remote/path > filelist.txt
 ```
+
+출력 형식:
+
+```
+d       4096 2026-03-10 12:00:00 some-directory
+f      12345 2026-03-10 12:30:00 some-file.txt
+```
+
+- `d` = 디렉토리, `f` = 파일
 
 ### get — 파일 다운로드
 
